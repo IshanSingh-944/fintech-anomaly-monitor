@@ -118,7 +118,10 @@ with st.sidebar:
     uploaded = st.file_uploader("Daily data file", type=["csv", "xlsx", "xls"]) if source == "Sample / uploaded file" else None
     database = st.text_input("SQLite database path", os.getenv("SQLITE_DB_PATH", "signalforge.db")) if source == "Live SQLite database" else ""
     if source == "Sample / uploaded file":
-        st.caption("Sample data is used by default. Upload your own CSV or Excel file for this session.")
+        if st.session_state.get("show_file_upload") and not uploaded:
+            st.caption("Upload your CSV or Excel file to continue. Sample data is not being used.")
+        else:
+            st.caption("Sample data is used by default. Upload your own CSV or Excel file for this session.")
     else:
         st.caption("The database is reloaded every 30 seconds.")
     st.markdown("### Detection settings")
@@ -148,6 +151,9 @@ if source == "Live SQLite database":
     st_autorefresh(interval=30_000, key="sqlite_refresh")
     data = load_sqlite_data(database)
 else:
+    if st.session_state.get("show_file_upload") and not uploaded:
+        st.info("Upload your CSV or Excel file in the sidebar to open the monitoring workspace.")
+        st.stop()
     data = load_data(uploaded) if uploaded else load_data("sample_data.csv")
 if data.empty:
     st.info("No rows are available yet. Add records to the daily_metrics table.")
