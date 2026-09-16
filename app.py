@@ -36,6 +36,15 @@ html, body, [class*="css"] { font-family:'Space Grotesk', sans-serif; color:var(
 .signal-copy { color:#c2d0cb; font-size:.88rem; line-height:1.5; margin-top:.45rem; }
 .signal-meta { color:var(--muted); font:500 .7rem 'DM Mono', monospace; margin-top:.7rem; text-transform:uppercase; }
 .healthy { background:var(--green-soft); border:1px solid #28634e; border-radius:8px; color:var(--green); padding:1rem 1.1rem; }
+.welcome { max-width:980px; margin:8vh auto 0; }
+.welcome-kicker { color:var(--green); font:500 .72rem 'DM Mono', monospace; letter-spacing:.14em; text-transform:uppercase; }
+.welcome-title { font-size:clamp(2.8rem, 6vw, 5.8rem); font-weight:600; letter-spacing:-.06em; line-height:.95; max-width:780px; margin:.8rem 0 1.1rem; }
+.welcome-copy { color:var(--muted); font-size:1.05rem; line-height:1.6; max-width:620px; }
+.choice { background:rgba(20,32,31,.92); border:1px solid var(--line); border-radius:10px; min-height:190px; padding:1.25rem; margin-top:2.3rem; }
+.choice-label { color:var(--green); font:500 .7rem 'DM Mono', monospace; text-transform:uppercase; letter-spacing:.1em; }
+.choice-title { font-size:1.3rem; font-weight:600; margin:.8rem 0 .45rem; }
+.choice-copy { color:var(--muted); font-size:.88rem; line-height:1.45; }
+.welcome-note { color:var(--muted); font-size:.78rem; margin-top:1.2rem; }
 section[data-testid="stSidebar"] { background:#101c1b; border-right:1px solid var(--line); }
 div[data-testid="stFileUploader"] { border:1px dashed #4d7868; border-radius:8px; padding:.35rem; background:#14201f; }
 div[data-baseweb="input"], div[data-baseweb="select"] { background:#182725; }
@@ -69,12 +78,43 @@ def initialize_settings() -> None:
         st.session_state.smtp_port = 587
 
 
+def render_welcome() -> None:
+    st.markdown(
+        '<div class="welcome"><div class="welcome-kicker">SignalForge / fintech operations</div>'
+        '<div class="welcome-title">See the signal before it becomes the story.</div>'
+        '<div class="welcome-copy">A private workspace for spotting unusual movement in payments, volume, refunds, and churn. Start with a safe sample or bring your own operational export.</div></div>',
+        unsafe_allow_html=True,
+    )
+    sample_choice, file_choice = st.columns(2, gap="large")
+    with sample_choice:
+        st.markdown('<div class="choice"><div class="choice-label">01 / Explore</div><div class="choice-title">Try the sample workspace</div><div class="choice-copy">See the monitor in action with included demonstration data. Nothing is uploaded or sent until you choose to configure email.</div></div>', unsafe_allow_html=True)
+        if st.button("Open sample workspace", type="primary", use_container_width=True):
+            st.session_state.data_source = "Sample / uploaded file"
+            st.session_state.onboarding_complete = True
+            st.rerun()
+    with file_choice:
+        st.markdown('<div class="choice"><div class="choice-label">02 / Analyze</div><div class="choice-title">Use my own data</div><div class="choice-copy">Upload a CSV or Excel export for this session. Your file stays in the current workspace and is not added to the repository.</div></div>', unsafe_allow_html=True)
+        if st.button("Continue to file upload", use_container_width=True):
+            st.session_state.data_source = "Sample / uploaded file"
+            st.session_state.onboarding_complete = True
+            st.session_state.show_file_upload = True
+            st.rerun()
+    st.markdown('<div class="welcome-note">You can configure your own SMTP sender and recipient after entering the workspace. Credentials remain session-only.</div>', unsafe_allow_html=True)
+
+
 initialize_settings()
+if not st.session_state.get("onboarding_complete", False):
+    render_welcome()
+    st.stop()
 st.markdown('<div class="topbar"><div><div class="kicker">SignalForge / operations monitor</div><div class="title">Daily control room</div><div class="description">Detect movement in payments, volume, refunds, and churn before it becomes a business problem.</div></div><div><div class="date-label">Workspace status</div><div class="date-value">Monitoring active</div></div></div>', unsafe_allow_html=True)
 
 with st.sidebar:
     st.markdown("### Workspace")
-    source = st.radio("Data source", ["Sample / uploaded file", "Live SQLite database"], index=0)
+    if st.button("Start over / change data", use_container_width=True):
+        st.session_state.onboarding_complete = False
+        st.session_state.pop("show_file_upload", None)
+        st.rerun()
+    source = st.radio("Data source", ["Sample / uploaded file", "Live SQLite database"], index=["Sample / uploaded file", "Live SQLite database"].index(st.session_state.get("data_source", "Sample / uploaded file")), key="data_source")
     uploaded = st.file_uploader("Daily data file", type=["csv", "xlsx", "xls"]) if source == "Sample / uploaded file" else None
     database = st.text_input("SQLite database path", os.getenv("SQLITE_DB_PATH", "signalforge.db")) if source == "Live SQLite database" else ""
     if source == "Sample / uploaded file":
