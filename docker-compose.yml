@@ -1,0 +1,22 @@
+services:
+  dashboard:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      SQLITE_DB_PATH: /data/signalforge.db
+    volumes:
+      - signalforge-data:/data
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: python sqlite_monitor.py --database /data/signalforge.db --interval 30
+    env_file:
+      - .env
+    volumes:
+      - signalforge-data:/data
+    restart: unless-stopped
+
+volumes:
+  signalforge-data:
